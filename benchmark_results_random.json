@@ -1,0 +1,82 @@
+{
+    "User_0": {
+        "status": "success",
+        "ttft_seconds": 121.29
+    },
+    "User_3": {
+        "status": "success",
+        "ttft_seconds": 121.28
+    },
+    "User_1": {
+        "status": "success",
+        "ttft_seconds": 123.43
+    },
+    "User_16": {
+        "status": "success",
+        "ttft_seconds": 127.48
+    },
+    "User_6": {
+        "status": "success",
+        "ttft_seconds": 127.49
+    },
+    "User_18": {
+        "status": "success",
+        "ttft_seconds": 127.48
+    },
+    "User_9": {
+        "status": "success",
+        "ttft_seconds": 127.49
+    },
+    "User_8": {
+        "status": "success",
+        "ttft_seconds": 127.49
+    },
+    "User_17": {
+        "status": "success",
+        "ttft_seconds": 127.48
+    },
+    "User_2": {
+        "status": "success",
+        "ttft_seconds": 127.5
+    },
+    "User_15": {
+        "status": "success",
+        "ttft_seconds": 127.49
+    },
+    "User_7": {
+        "status": "success",
+        "ttft_seconds": 127.5
+    },
+    "User_13": {
+        "status": "success",
+        "ttft_seconds": 127.49
+    },
+    "User_10": {
+        "status": "success",
+        "ttft_seconds": 127.49
+    },
+    "User_4": {
+        "status": "success",
+        "ttft_seconds": 127.59
+    },
+    "User_14": {
+        "status": "success",
+        "ttft_seconds": 127.57
+    },
+    "User_5": {
+        "status": "success",
+        "ttft_seconds": 127.58
+    },
+    "User_11": {
+        "status": "success",
+        "ttft_seconds": 127.58
+    },
+    "User_12": {
+        "status": "success",
+        "ttft_seconds": 127.58
+    },
+    "User_19": {
+        "status": "success",
+        "ttft_seconds": 127.57
+    }
+}

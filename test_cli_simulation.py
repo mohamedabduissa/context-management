@@ -6,12 +6,12 @@ import os
 import random
 
 NUM_USERS = 15 # 15 simulated developers
-STEPS = 20     # Incremental growth: 5k -> 10k -> ... -> 100k
-PROXY_URL = "http://localhost:9000/v1/chat/completions"
+STEPS = 10     # Incremental growth: 5k -> 10k -> ... -> 100k
+PROXY_URL = "http://localhost:8000/v1/chat/completions"
 
 # --- REAL-WORLD ASSETS (Shared to trigger Prefix Caching) ---
 SHARED_SYSTEM_PROMPT = "You are a senior full-stack engineer. You have access to a massive codebase and advanced CLI tools."
-SHARED_TOOLS_SCHEMA = "INTERFACE_DEFINITION: " + ("tool_logic_metadata " * 2000)
+SHARED_TOOLS_SCHEMA = "INTERFACE_DEFINITION: " + ("tool_logic_metadata " * 4000)
 
 test_results = {}
 
@@ -20,16 +20,16 @@ async def simulate_micro_step_developer(user_id: int, client: httpx.AsyncClient)
     test_results[user_key] = {"steps": []}
     
     # JITTERED START (Spread over 60s for real-world traffic distribution)
-    delay = random.uniform(0, 60) 
+    delay = random.uniform(0, 30) 
     print(f"[{user_key}] ⏳ Waiting {round(delay, 2)}s to simulate organic arrival...")
     await asyncio.sleep(delay)
     
     messages = [{"role": "system", "content": SHARED_SYSTEM_PROMPT}]
     
     for step in range(1, STEPS + 1):
-        target_kb = step * 5
+        target_kb = step * 10
         # ~3,750 hex chars is roughly 5k tokens
-        new_block = os.urandom(3750).hex() 
+        new_block = os.urandom(7500).hex() 
         
         messages.append({"role": "user", "content": f"New code block added (Total {target_kb}k):\n{new_block}\n\nPlease check for syntax errors."})
         

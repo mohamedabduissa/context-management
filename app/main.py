@@ -172,6 +172,7 @@ async def openai_chat_endpoint(req: Request, background_tasks: BackgroundTasks):
     if stream:
 
         async def async_generator():
+            started_thinking = False
             try:
                 async with async_http_client.stream(
                     "POST", "http://localhost:8000/v1/chat/completions", json=data
@@ -190,12 +191,23 @@ async def openai_chat_endpoint(req: Request, background_tasks: BackgroundTasks):
                                         "delta", {}
                                     )
 
-                                    # Intercept and route vLLM's internal "reasoning" to official OpenAI "reasoning_content"
-                                    if "reasoning" in delta:
-                                        r_text = delta.pop("reasoning")
-                                        if r_text is not None:
-                                            delta["reasoning_content"] = r_text
-                                            decoded = "data: " + json.dumps(chunk)
+                                    reasoning = delta.get("reasoning") or delta.get("reasoning_content")
+                                    if reasoning:
+                                        if not started_thinking:
+                                            delta["content"] = f"<thought>\n{reasoning}"
+                                            started_thinking = True
+                                        else:
+                                            delta["content"] = reasoning
+                                        
+                                        delta["reasoning_content"] = reasoning
+                                        if "reasoning" in delta:
+                                            delta.pop("reasoning")
+                                        decoded = "data: " + json.dumps(chunk)
+                                    elif started_thinking:
+                                        content = delta.get("content") or ""
+                                        delta["content"] = f"\n</thought>\n\n" + content
+                                        started_thinking = False
+                                        decoded = "data: " + json.dumps(chunk)
 
                                 except Exception as e:
                                     pass

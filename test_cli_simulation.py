@@ -6,12 +6,12 @@ import os
 import random
 
 NUM_USERS = 15 # 15 simulated developers
-STEPS = 20     # Incremental growth: 5k -> 10k -> ... -> 100k
+STEPS = 10     # Incremental growth
 PROXY_URL = "http://localhost:9000/v1/chat/completions"
 
 # --- REAL-WORLD ASSETS (Shared to trigger Prefix Caching) ---
 SHARED_SYSTEM_PROMPT = "You are a senior full-stack engineer. You have access to a massive codebase and advanced CLI tools."
-SHARED_TOOLS_SCHEMA = "INTERFACE_DEFINITION: " + ("tool_logic_metadata " * 2000)
+SHARED_TOOLS_SCHEMA = "INTERFACE_DEFINITION: " + ("tool_logic_metadata " * 4000)
 
 test_results = {}
 
@@ -19,17 +19,22 @@ async def simulate_micro_step_developer(user_id: int, client: httpx.AsyncClient)
     user_key = f"Dev_{user_id}"
     test_results[user_key] = {"steps": []}
     
-    # JITTERED START (Spread over 60s for real-world traffic distribution)
-    delay = random.uniform(0, 60) 
+    # JITTERED START (Spread over 30s for real-world traffic distribution)
+    delay = random.uniform(0, 30) 
     print(f"[{user_key}] ⏳ Waiting {round(delay, 2)}s to simulate organic arrival...")
     await asyncio.sleep(delay)
     
     messages = [{"role": "system", "content": SHARED_SYSTEM_PROMPT}]
     
+    # التعديل هنا: شيلنا الـ Authorization تماماً عشان يطابق الـ curl
+    headers = {
+        "Content-Type": "application/json"
+    }
+
     for step in range(1, STEPS + 1):
-        target_kb = step * 5
-        # ~3,750 hex chars is roughly 5k tokens
-        new_block = os.urandom(3750).hex() 
+        target_kb = step * 10
+        # ~15,000 hex chars is roughly 5k to 7k tokens
+        new_block = os.urandom(7500).hex() 
         
         messages.append({"role": "user", "content": f"New code block added (Total {target_kb}k):\n{new_block}\n\nPlease check for syntax errors."})
         
@@ -39,14 +44,28 @@ async def simulate_micro_step_developer(user_id: int, client: httpx.AsyncClient)
         
         try:
             async with client.stream("POST", PROXY_URL, json={
-                "model": "cyankiwi/Qwen3.5-27B-AWQ-4bit",
+                "model": "qwen-max",
                 "messages": messages,
-                "max_tokens": 256, # Fast response
+                "max_tokens": 500,
+                "temperature": 0.1,
                 "stream": True,
-                "tools": [{"type": "function", "function": {"name": "validator", "description": SHARED_TOOLS_SCHEMA}}]
-            }, timeout=300.0) as resp:
+                "tools": [{
+                    "type": "function", 
+                    "function": {
+                        "name": "validator", 
+                        "description": SHARED_TOOLS_SCHEMA,
+                        "parameters": {
+                            "type": "object",
+                            "properties": {}
+                        }
+                    }
+                }]
+            }, headers=headers, timeout=300.0) as resp:
+                
+                # لو في إيرور المرة دي (زي 400)، هيطبعلك السبب بالتفصيل عشان نحله
                 if resp.status_code != 200:
-                    print(f"[{user_key}] ❌ Failed: {resp.status_code}")
+                    error_msg = await resp.aread()
+                    print(f"[{user_key}] ❌ Failed: {resp.status_code} - {error_msg.decode('utf-8')}")
                     break
 
                 first_token = True
@@ -59,11 +78,13 @@ async def simulate_micro_step_developer(user_id: int, client: httpx.AsyncClient)
                             first_token = False
                         
                         data = json.loads(line[6:])
-                        assistant_response += data.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                        delta = data.get("choices", [{}])[0].get("delta", {})
+                        # أحياناً الكونتنت بيكون None في أول ستريم، فالسطر ده بيحميك من الإيرور
+                        assistant_response += delta.get("content", "") if delta.get("content") else ""
             
             messages.append({"role": "assistant", "content": assistant_response})
             
-            # HUMAN THINK PAUSE (Shortened to keep test moving)
+            # HUMAN THINK PAUSE
             await asyncio.sleep(random.uniform(3, 7))
 
         except Exception as e:
@@ -72,12 +93,13 @@ async def simulate_micro_step_developer(user_id: int, client: httpx.AsyncClient)
 
 async def main():
     print(f"🏗️  Starting MICRO-INCREMENTAL Simulation: {NUM_USERS} devs | {STEPS} steps | 5k increments.")
-    async with httpx.AsyncClient(limits=httpx.Limits(max_connections=150)) as client:
+    timeout = httpx.Timeout(300.0, connect=60.0)
+    async with httpx.AsyncClient(limits=httpx.Limits(max_connections=150), timeout=timeout) as client:
         await asyncio.gather(*[simulate_micro_step_developer(i, client) for i in range(NUM_USERS)])
         
     with open("benchmark_micro_steps.json", "w") as f:
         json.dump(test_results, f, indent=4)
-    print("✅ Micro-step benchmark complete.")
+    print("✅ Micro-step benchmark complete. Check benchmark_micro_steps.json for results.")
 
 if __name__ == "__main__":
     asyncio.run(main())
